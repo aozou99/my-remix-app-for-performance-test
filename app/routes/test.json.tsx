@@ -13,40 +13,53 @@ export const loader: LoaderFunction = async ({ request }) => {
     const url = new URL(request.url);
     const size = Number.parseInt(url.searchParams.get('size') || '1000', 10);
     const operations = url.searchParams.get('operations')?.split(',') || ['generate', 'serialize', 'deserialize'];
+    const iterations = Number.parseInt(url.searchParams.get('iterations') || '5', 10);
 
     const results: Record<string, number> = {};
-    let largeObject: Record<string, number> = {};
-    let serialized = '';
+    let totalObjectSize = 0;
 
-    if (operations.includes('generate')) {
-        const startGenerate = performance.now();
-        largeObject = generateLargeObject(size);
-        const endGenerate = performance.now();
-        results.generateTime = endGenerate - startGenerate;
+    for (let i = 0; i < iterations; i++) {
+        let largeObject: Record<string, number> = {};
+        let serialized = '';
+
+        if (operations.includes('generate')) {
+            const startGenerate = performance.now();
+            largeObject = generateLargeObject(size);
+            const endGenerate = performance.now();
+            results.generateTime = (results.generateTime || 0) + (endGenerate - startGenerate);
+        }
+
+        if (operations.includes('serialize')) {
+            const startSerialize = performance.now();
+            serialized = JSON.stringify(largeObject);
+            const endSerialize = performance.now();
+            results.serializeTime = (results.serializeTime || 0) + (endSerialize - startSerialize);
+        }
+
+        if (operations.includes('deserialize')) {
+            const startDeserialize = performance.now();
+            JSON.parse(serialized);
+            const endDeserialize = performance.now();
+            results.deserializeTime = (results.deserializeTime || 0) + (endDeserialize - startDeserialize);
+        }
+
+        totalObjectSize += serialized.length;
     }
 
-    if (operations.includes('serialize')) {
-        const startSerialize = performance.now();
-        serialized = JSON.stringify(largeObject);
-        const endSerialize = performance.now();
-        results.serializeTime = endSerialize - startSerialize;
-    }
-
-    if (operations.includes('deserialize')) {
-        const startDeserialize = performance.now();
-        JSON.parse(serialized);
-        const endDeserialize = performance.now();
-        results.deserializeTime = endDeserialize - startDeserialize;
-    }
+    // 平均を計算
+    Object.keys(results).forEach((key) => {
+        results[key] /= iterations;
+    });
 
     results.totalTime = Object.values(results).reduce((a, b) => a + b, 0);
-    results.objectSize = serialized.length;
+    results.objectSize = totalObjectSize / iterations;
 
     return json({
         size,
         operations,
+        iterations,
         ...results,
-        serialized,
+        serialized: JSON.stringify(generateLargeObject(size)),
     });
 };
 
@@ -67,14 +80,15 @@ export default function TestJson() {
             </h1>
             <div className='mb-6 bg-blue-100 dark:bg-blue-900 p-4 rounded-md'>
                 <p className='text-blue-800 dark:text-blue-200 mb-2'>
-                    URLパラメータ 'size' でオブジェクトのサイズを、'operations' で実行する操作を指定できます。
+                    URLパラメータ 'size' でオブジェクトのサイズを、'operations' で実行する操作を、'iterations'
+                    で繰り返し回数を指定できます。
                 </p>
                 <p className='text-blue-800 dark:text-blue-200 font-semibold'>
-                    例: /test/json?size=10000&operations=generate,serialize
+                    例: /test/json?size=10000&operations=generate,serialize&iterations=10
                 </p>
             </div>
 
-            <h2 className='text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-300'>テスト結果：</h2>
+            <h2 className='text-2xl font-semibold mb-4 text-gray-700 dark:text-gray-300'>テスト結果（平均）：</h2>
             <ul className='space-y-3'>
                 <li className='flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-3 rounded'>
                     <span className='font-medium text-gray-700 dark:text-gray-300'>オブジェクトサイズ:</span>
@@ -113,6 +127,10 @@ export default function TestJson() {
                         シリアライズされたオブジェクトのサイズ:
                     </span>
                     <span className='text-gray-900 dark:text-gray-100'>{formatSize(data.objectSize)}</span>
+                </li>
+                <li className='flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-3 rounded'>
+                    <span className='font-medium text-gray-700 dark:text-gray-300'>繰り返し回数:</span>
+                    <span className='text-gray-900 dark:text-gray-100'>{data.iterations}</span>
                 </li>
             </ul>
             <div className='mt-6'>
