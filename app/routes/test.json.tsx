@@ -1,4 +1,3 @@
-import { hrtime } from 'node:process';
 import { type LoaderFunction, json } from '@remix-run/cloudflare';
 import { useLoaderData } from '@remix-run/react';
 
@@ -20,24 +19,24 @@ export const loader: LoaderFunction = async ({ request }) => {
     let serialized = '';
 
     if (operations.includes('generate')) {
-        const startGenerate = hrtime();
+        const startGenerate = performance.now();
         largeObject = generateLargeObject(size);
-        const endGenerate = hrtime(startGenerate);
-        results.generateTime = endGenerate[0] * 1000 + endGenerate[1] / 1e6;
+        const endGenerate = performance.now();
+        results.generateTime = endGenerate - startGenerate;
     }
 
     if (operations.includes('serialize')) {
-        const startSerialize = hrtime();
+        const startSerialize = performance.now();
         serialized = JSON.stringify(largeObject);
-        const endSerialize = hrtime(startSerialize);
-        results.serializeTime = endSerialize[0] * 1000 + endSerialize[1] / 1e6;
+        const endSerialize = performance.now();
+        results.serializeTime = endSerialize - startSerialize;
     }
 
     if (operations.includes('deserialize')) {
-        const startDeserialize = hrtime();
+        const startDeserialize = performance.now();
         JSON.parse(serialized);
-        const endDeserialize = hrtime(startDeserialize);
-        results.deserializeTime = endDeserialize[0] * 1000 + endDeserialize[1] / 1e6;
+        const endDeserialize = performance.now();
+        results.deserializeTime = endDeserialize - startDeserialize;
     }
 
     results.totalTime = Object.values(results).reduce((a, b) => a + b, 0);
