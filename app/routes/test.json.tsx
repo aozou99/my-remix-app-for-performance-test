@@ -100,7 +100,7 @@ export default function TestJson() {
                 </li>
                 {data.generateTime !== undefined && (
                     <li className='flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-3 rounded'>
-                        <span className='font-medium text-gray-700 dark:text-gray-300'>生成時間:</span>
+                        <span className='font-medium text-gray-700 dark:text-gray-300'>オブジェクト生成時間:</span>
                         <span className='text-gray-900 dark:text-gray-100'>{data.generateTime.toFixed(2)} ミリ秒</span>
                     </li>
                 )}
